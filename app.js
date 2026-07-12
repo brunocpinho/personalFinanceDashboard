@@ -87,13 +87,13 @@ const categoryColors = {
     'Alimentacao': '#f59e0b',
     'Custos fixos': '#3b82f6',
     'Cartao de Credito': '#ef4444',
-    'Saúde': '#10b981',
+    'Saude': '#10b981',
     'Transporte': '#6366f1',
     'Carro': '#8b5cf6',
     'Vestuario': '#ec4899',
     'Lazer': '#14b8a6',
     'Pets': '#f97316',
-    'Educação': '#84cc16',
+    'Educacao': '#84cc16',
     'Aplicacoes': '#06b6d4',
     'Outros': '#9ca3af'
 };
@@ -847,11 +847,11 @@ let classificationResults = [];
 const allowedCategories = [
     'Academia', 'Alimentacao', 'Aplicacoes', 'Assinaturas', 'Bebidas', 'Carro',
     'Cartao de Credito', 'Combustivel', 'Custos fixos', 'Doacoes', 'Domesticos',
-    'Educação', 'Eletronicos', 'Estetica', 'Farmacia', 'Imoveis', 'Impostos',
+    'Educacao', 'Eletronicos', 'Estetica', 'Farmacia', 'Imoveis', 'Impostos',
     'Investimentos', 'Lazer', 'Mateus', 'Outros', 'Pagamento Cartao', 'Pessoais',
     'Pets', 'Presentes', 'Recebimentos', 'Reembolsos', 'Rendimentos', 'Resgates',
     'Restaurante', 'Salario', 'Saldo Inicial (Mes)', 'Salinense', 'Saques',
-    'Saúde', 'Serviços', 'Taxas', 'Transferencias', 'Transporte', 'Vestuario', 'Viagens'
+    'Saude', 'Servicos', 'Taxas', 'Transferencias', 'Transporte', 'Vestuario', 'Viagens'
 ];
 
 // Mapping to enforce strict D/C and I/E based on Category
@@ -867,7 +867,7 @@ const categoryRules = {
     'Custos fixos': { dc: 'D', ie: 'E' },
     'Doacoes': { dc: 'D', ie: 'E' },
     'Domesticos': { dc: 'D', ie: 'E' },
-    'Educação': { dc: 'D', ie: 'E' },
+    'Educacao': { dc: 'D', ie: 'E' },
     'Eletronicos': { dc: 'D', ie: 'E' },
     'Estetica': { dc: 'D', ie: 'E' },
     'Farmacia': { dc: 'D', ie: 'E' },
@@ -890,8 +890,8 @@ const categoryRules = {
     'Saldo Inicial (Mes)': { dc: 'C', ie: 'I' },
     'Salinense': { dc: 'D', ie: 'E' },
     'Saques': { dc: 'D', ie: 'E' },
-    'Saúde': { dc: 'D', ie: 'E' },
-    'Serviços': { dc: 'D', ie: 'E' },
+    'Saude': { dc: 'D', ie: 'E' },
+    'Servicos': { dc: 'D', ie: 'E' },
     'Taxas': { dc: 'D', ie: 'E' },
     'Transferencias': { dc: 'D', ie: 'E' },
     'Transporte': { dc: 'D', ie: 'E' },
@@ -904,12 +904,23 @@ const allowedSubcategories = [
     'Farmacia',
     'Restaurante',
     'Combustivel',
-    'Serviços',
+    'Servicos',
     'Pets',
     'Vestuario',
     'Impostos',
     'Investimentos',
-    'Saúde'
+    'Saude',
+    'CasaEstoril',
+    'ContaEnergia',
+    'ContaInternet',
+    'CondominioAptoJdAmerica',
+    'LoteEstoril',
+    'AptoJardimAmerica',
+    'ReformaAptoJdAmerica',
+    'MateusEscola',
+    'MateusRoupas',
+    'MateusSaude',
+    'Aluguel'
 ];
 
 if (els.dropZone) {
