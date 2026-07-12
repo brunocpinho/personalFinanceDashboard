@@ -259,7 +259,6 @@ function changeView(view, skipLoad=false) {
         els.dashboardContent.style.display = 'none';
         if(els.uploadView) els.uploadView.style.display = 'block';
         els.viewTitle.innerText = `Gerenciar Transações - ${els.monthSelect.options[els.monthSelect.selectedIndex].text}/${state.year}`;
-        return; // Do not load data for upload view
     } else {
         els.yearGroup.style.display = 'block';
         els.monthGroup.style.display = 'block';
@@ -334,7 +333,11 @@ async function loadData() {
             if (data) state.data = data;
         }
         
-        processAndRender();
+        if (state.view === 'upload') {
+            populateUploadView();
+        } else {
+            processAndRender();
+        }
         
     } catch (e) {
         console.warn(`Could not load or decrypt data`, e);
@@ -954,12 +957,23 @@ function handleFiles(files) {
 
 function clearUpload() {
     uploadedFile = null;
-    classificationResults = [];
     els.selectedFileName.innerText = '';
     els.fileInput.value = '';
     els.classifyBtn.disabled = true;
-    els.reviewArea.style.display = 'none';
     els.uploadLoading.style.display = 'none';
+    populateUploadView();
+}
+
+function populateUploadView() {
+    classificationResults = JSON.parse(JSON.stringify(state.data)); // Cópia profunda do estado atual (repositório local)
+    if (classificationResults.length > 0) {
+        els.reviewArea.style.display = 'block';
+        renderReviewTable();
+        els.saveReviewBtn.disabled = false; // Permite salvar mesmo sem upload (apenas correções manuais)
+    } else {
+        els.reviewArea.style.display = 'none';
+        classificationResults = [];
+    }
 }
 
 async function startClassification() {
@@ -984,7 +998,27 @@ async function startClassification() {
             throw new Error(err.error || 'Erro no servidor');
         }
         
-        classificationResults = await response.json();
+        const newResults = await response.json();
+        
+        // Merge & Desduplicação Inteligente
+        newResults.forEach(newItem => {
+            const exists = classificationResults.some(existing => 
+                existing.dateStr === newItem.dateStr && 
+                existing.desc === newItem.desc && 
+                existing.total === newItem.total
+            );
+            if (!exists) {
+                classificationResults.push(newItem);
+            }
+        });
+        
+        // Ordenação cronológica para facilitar revisão (pelo dia)
+        classificationResults.sort((a, b) => {
+            const dayA = parseInt(a.dateStr.split('/')[0]) || 0;
+            const dayB = parseInt(b.dateStr.split('/')[0]) || 0;
+            return dayA - dayB;
+        });
+
         renderReviewTable();
         
     } catch (error) {
@@ -1010,9 +1044,9 @@ function renderReviewTable() {
         let originOptions = allowedOrigins.map(o => `<option value="${o}" ${item.origem === o ? 'selected' : ''}>${o}</option>`).join('');
         
         tr.innerHTML = `
-            <td><input type="text" class="rev-input" value="${item.dateStr}" data-field="dateStr" data-idx="${index}" style="width: 100%; background: transparent; border: 1px solid var(--glass-border); color: inherit; padding: 4px; border-radius: 4px;"></td>
-            <td><input type="text" class="rev-input" value="${item.desc}" data-field="desc" data-idx="${index}" style="width: 100%; background: transparent; border: 1px solid var(--glass-border); color: inherit; padding: 4px; border-radius: 4px;"></td>
-            <td><input type="number" step="0.01" class="rev-input text-right" value="${item.total}" data-field="total" data-idx="${index}" style="width: 80px; background: transparent; border: 1px solid var(--glass-border); color: inherit; padding: 4px; border-radius: 4px;"></td>
+            <td style="padding: 4px;">${item.dateStr}</td>
+            <td style="padding: 4px;">${item.desc}</td>
+            <td class="text-right" style="padding: 4px;">${formatMoney(item.total)}</td>
             <td>
                 <select class="rev-select-origem" data-idx="${index}" style="width: 120px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: inherit; padding: 4px; border-radius: 4px;">
                     ${originOptions}
@@ -1030,7 +1064,7 @@ function renderReviewTable() {
             </td>
             <!-- D/C and I/E kept in data model but hidden from UI for better UX -->
             <td style="text-align: center;">
-                <button class="remove-row-btn" data-idx="${index}" style="background:transparent; border:none; color:var(--danger); cursor:pointer;">&times;</button>
+                <button class="remove-row-btn" data-idx="${index}" style="background:transparent; border:none; color:var(--danger); cursor:pointer; font-size: 1.2rem;">&times;</button>
             </td>
         `;
         els.reviewTableBody.appendChild(tr);

@@ -256,7 +256,9 @@ def save_data():
         
         # 2. Sincronizar com o OneDrive (Cópia limpa/Single Source of Truth)
         if os.path.exists(ONEDRIVE_PATH):
-            onedrive_file = os.path.join(ONEDRIVE_PATH, filename)
+            onedrive_year_dir = os.path.join(ONEDRIVE_PATH, year)
+            os.makedirs(onedrive_year_dir, exist_ok=True)
+            onedrive_file = os.path.join(onedrive_year_dir, filename)
             with open(onedrive_file, 'w', encoding='utf-8') as f:
                 f.write(tsv_content)
         
