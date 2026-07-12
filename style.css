@@ -721,3 +721,40 @@ tbody tr:hover {
         text-overflow: ellipsis;
     }
 }
+
+
+/* Pivot Table / Subcategories Styles */
+.subcat-row {
+    transition: all 0.2s ease-in-out;
+    background: rgba(0, 0, 0, 0.05); /* Slight tint for subrows */
+}
+[data-theme="dark"] .subcat-row {
+    background: rgba(255, 255, 255, 0.02);
+}
+.subcat-row.collapsed {
+    display: none;
+}
+.expand-icon {
+    display: inline-block;
+    width: 16px;
+    font-size: 0.8rem;
+    color: var(--primary);
+    margin-right: 4px;
+    transition: transform 0.2s;
+    user-select: none;
+}
+.details-icon-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    margin-left: 8px;
+    font-size: 0.9rem;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+.details-icon-btn:hover {
+    opacity: 1;
+}
+.cat-row {
+    cursor: pointer;
+}

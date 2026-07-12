@@ -53,6 +53,8 @@ const els = {
     originFilter: document.getElementById('origin-filter'),
     matrixSection: document.getElementById('annual-matrix-section'),
     matrixTableBody: document.getElementById('matrix-table-body'),
+    matrixTableHead: document.getElementById('matrix-table-head'),
+    matrixTitle: document.getElementById('matrix-title'),
     
     // Login
     loginModal: document.getElementById('login-modal'),
@@ -456,7 +458,6 @@ function processAndRender() {
 
     let totalIn = 0;
     let totalOut = 0;
-    let expByCategoryMonth = {};
     
     let origins = new Set();
     
@@ -471,21 +472,59 @@ function processAndRender() {
         years.forEach(y => { trendsByPeriod[y] = { inc: 0, exp: 0 }; });
     }
     
+    // Matrix tracking
+    let matrixData = {}; // cat -> { total, subcats: { subcat: { periods: {}, total } }, periods: {} }
+    
+    // Detailed Table tracking
+    let filteredExpByCategory = {}; // cat -> { total, subcats: { subcat: total } }
+    let filteredTotalOut = 0;
+    
+    let incomeByCategory = {}; // cat -> { total, subcats: { subcat: total } }
+    let totalIncomeCategories = 0;
+    
+    const selectedOrigin = els.originFilter ? els.originFilter.value : 'all';
+
     // Process Data
     activeData.forEach(item => {
         if (item.cat === 'Saldo Inicial (Mes)') return;
 
         let isIncome = (item.dc === 'C');
+        let subcat = item.subcatOrig || 'Não classificado';
+        if (!subcat || subcat === '-') subcat = 'Não classificado';
+        
+        let periodStr = state.view === 'historico' ? item.yearStr : item.monthStr;
         
         if (isIncome) {
             totalIn += item.total;
+            
+            // Income categories
+            if (!incomeByCategory[item.cat]) incomeByCategory[item.cat] = { total: 0, subcats: {} };
+            incomeByCategory[item.cat].total += item.total;
+            incomeByCategory[item.cat].subcats[subcat] = (incomeByCategory[item.cat].subcats[subcat] || 0) + item.total;
+            totalIncomeCategories += item.total;
+            
         } else {
             totalOut += item.total;
             if (item.origem) origins.add(item.origem.toUpperCase());
             
-            if (state.view === 'anual') {
-                if (!expByCategoryMonth[item.cat]) expByCategoryMonth[item.cat] = {};
-                expByCategoryMonth[item.cat][item.monthStr] = (expByCategoryMonth[item.cat][item.monthStr] || 0) + item.total;
+            // Expenses categories
+            const orgVal = item.origem ? item.origem.toUpperCase() : '';
+            if (selectedOrigin === 'all' || selectedOrigin === orgVal) {
+                if (!filteredExpByCategory[item.cat]) filteredExpByCategory[item.cat] = { total: 0, subcats: {} };
+                filteredExpByCategory[item.cat].total += item.total;
+                filteredExpByCategory[item.cat].subcats[subcat] = (filteredExpByCategory[item.cat].subcats[subcat] || 0) + item.total;
+                filteredTotalOut += item.total;
+            }
+            
+            // Matrix data (both anual and historico)
+            if (state.view === 'anual' || state.view === 'historico') {
+                if (!matrixData[item.cat]) matrixData[item.cat] = { total: 0, subcats: {}, periods: {} };
+                matrixData[item.cat].total += item.total;
+                matrixData[item.cat].periods[periodStr] = (matrixData[item.cat].periods[periodStr] || 0) + item.total;
+                
+                if (!matrixData[item.cat].subcats[subcat]) matrixData[item.cat].subcats[subcat] = { total: 0, periods: {} };
+                matrixData[item.cat].subcats[subcat].total += item.total;
+                matrixData[item.cat].subcats[subcat].periods[periodStr] = (matrixData[item.cat].subcats[subcat].periods[periodStr] || 0) + item.total;
             }
         }
         
@@ -549,42 +588,25 @@ function processAndRender() {
         });
     }
     
-    // Compute Filtered Categories (for table and chart)
-    let filteredExpByCategory = {};
-    let filteredTotalOut = 0;
-    const selectedOrigin = els.originFilter ? els.originFilter.value : 'all';
-    
-    let incomeByCategory = {};
-    let totalIncomeCategories = 0;
-    
-    activeData.forEach(item => {
-        if (item.cat === 'Saldo Inicial (Mes)') return;
-        let isIncome = (item.dc === 'C');
-        if (!isIncome) {
-            const orgVal = item.origem ? item.origem.toUpperCase() : '';
-            if (selectedOrigin === 'all' || selectedOrigin === orgVal) {
-                filteredExpByCategory[item.cat] = (filteredExpByCategory[item.cat] || 0) + item.total;
-                filteredTotalOut += item.total;
-            }
-        } else {
-            incomeByCategory[item.cat] = (incomeByCategory[item.cat] || 0) + item.total;
-            totalIncomeCategories += item.total;
-        }
-    });
-    
-    const sortedCats = Object.keys(filteredExpByCategory).sort((a,b) => filteredExpByCategory[b] - filteredExpByCategory[a]);
+    const sortedCats = Object.keys(filteredExpByCategory).sort((a,b) => filteredExpByCategory[b].total - filteredExpByCategory[a].total);
     
     renderTable(filteredExpByCategory, filteredTotalOut);
     renderIncomeTable(incomeByCategory, totalIncomeCategories);
     
-    if (state.view === 'anual') {
+    if (state.view === 'anual' || state.view === 'historico') {
         els.matrixSection.style.display = 'block';
-        renderAnnualMatrix(expByCategoryMonth);
+        if (els.matrixTitle) {
+            els.matrixTitle.innerText = state.view === 'anual' ? 'Acompanhamento Anual por Categoria' : 'Acompanhamento Histórico por Categoria';
+        }
+        renderAnnualMatrix(matrixData);
     } else {
         els.matrixSection.style.display = 'none';
     }
     
-    renderCharts(trendsByPeriod, sortedCats, filteredExpByCategory, filteredTotalOut);
+    // Prepare expByCategory for charts (needs flat format)
+    let flatExpByCat = {};
+    Object.keys(filteredExpByCategory).forEach(c => flatExpByCat[c] = filteredExpByCategory[c].total);
+    renderCharts(trendsByPeriod, sortedCats, flatExpByCat, filteredTotalOut);
 }
 
 function renderCharts(trends, sortedCats, expByCategory, totalExp) {
@@ -693,7 +715,7 @@ function updateChartsTheme() {
 function renderTable(expByCategory, totalExp) {
     els.tableBody.innerHTML = '';
     
-    const sortedCats = Object.keys(expByCategory).sort((a,b) => expByCategory[b] - expByCategory[a]);
+    const sortedCats = Object.keys(expByCategory).sort((a,b) => expByCategory[b].total - expByCategory[a].total);
     
     if (sortedCats.length === 0) {
         els.tableBody.innerHTML = '<tr><td colspan="3" style="text-align:center">Nenhuma despesa no período.</td></tr>';
@@ -701,18 +723,23 @@ function renderTable(expByCategory, totalExp) {
     }
     
     sortedCats.forEach((cat, index) => {
-        const amount = expByCategory[cat];
+        const catData = expByCategory[cat];
+        const amount = catData.total;
         const pct = totalExp > 0 ? ((amount / totalExp) * 100).toFixed(1) : 0;
         const color = getCategoryColor(cat, index);
+        const subCatsKeys = Object.keys(catData.subcats).sort((a,b) => catData.subcats[b] - catData.subcats[a]);
         
         const tr = document.createElement('tr');
-        tr.className = 'clickable-row';
-        tr.onclick = () => openCategoryDetails(cat);
+        tr.className = 'clickable-row cat-row';
+        const hasSubcats = subCatsKeys.length > 0;
+        
         tr.innerHTML = `
             <td>
                 <div class="category-name">
+                    ${hasSubcats ? '<span class="expand-icon">▶</span>' : '<span class="expand-icon" style="opacity:0">▶</span>'}
                     <div class="category-color" style="background-color: ${color}"></div>
-                    ${cat}
+                    <span>${cat}</span>
+                    <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}')">🔍</button>
                 </div>
             </td>
             <td class="text-right">${formatMoney(amount)}</td>
@@ -725,7 +752,44 @@ function renderTable(expByCategory, totalExp) {
                 </div>
             </td>
         `;
+        
+        const subcatRows = [];
+        subCatsKeys.forEach(sub => {
+            const subAmt = catData.subcats[sub];
+            const subPct = amount > 0 ? ((subAmt / amount) * 100).toFixed(1) : 0;
+            const subTr = document.createElement('tr');
+            subTr.className = 'subcat-row collapsed';
+            subTr.innerHTML = `
+                <td style="padding-left: 48px;">
+                    <div class="category-name" style="font-size: 0.9em; opacity: 0.8;">
+                        <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}', '${sub}')">🔍</button>
+                        ↳ ${sub}
+                    </div>
+                </td>
+                <td class="text-right" style="font-size: 0.9em; opacity: 0.8;">${formatMoney(subAmt)}</td>
+                <td style="font-size: 0.9em; opacity: 0.8;">${subPct}% da cat.</td>
+            `;
+            subcatRows.push(subTr);
+        });
+        
+        tr.onclick = () => {
+            const icon = tr.querySelector('.expand-icon');
+            if (icon) {
+                const isExpanded = icon.classList.contains('expanded');
+                if (isExpanded) {
+                    icon.classList.remove('expanded');
+                    icon.innerText = '▶';
+                    subcatRows.forEach(sr => sr.classList.add('collapsed'));
+                } else {
+                    icon.classList.add('expanded');
+                    icon.innerText = '▼';
+                    subcatRows.forEach(sr => sr.classList.remove('collapsed'));
+                }
+            }
+        };
+        
         els.tableBody.appendChild(tr);
+        subcatRows.forEach(sr => els.tableBody.appendChild(sr));
     });
 }
 
@@ -733,7 +797,7 @@ function renderIncomeTable(incomeByCategory, totalInc) {
     if (!els.incomeTableBody) return;
     els.incomeTableBody.innerHTML = '';
     
-    const sortedCats = Object.keys(incomeByCategory).sort((a,b) => incomeByCategory[b] - incomeByCategory[a]);
+    const sortedCats = Object.keys(incomeByCategory).sort((a,b) => incomeByCategory[b].total - incomeByCategory[a].total);
     
     if (sortedCats.length === 0) {
         els.incomeTableBody.innerHTML = '<tr><td colspan="3" style="text-align:center">Nenhuma receita no período.</td></tr>';
@@ -741,18 +805,23 @@ function renderIncomeTable(incomeByCategory, totalInc) {
     }
     
     sortedCats.forEach((cat, index) => {
-        const amount = incomeByCategory[cat];
+        const catData = incomeByCategory[cat];
+        const amount = catData.total;
         const pct = totalInc > 0 ? ((amount / totalInc) * 100).toFixed(1) : 0;
         const color = getCategoryColor(cat, index);
+        const subCatsKeys = Object.keys(catData.subcats).sort((a,b) => catData.subcats[b] - catData.subcats[a]);
         
         const tr = document.createElement('tr');
-        tr.className = 'clickable-row';
-        tr.onclick = () => openCategoryDetails(cat);
+        tr.className = 'clickable-row cat-row';
+        const hasSubcats = subCatsKeys.length > 0;
+        
         tr.innerHTML = `
             <td>
                 <div class="category-name">
+                    ${hasSubcats ? '<span class="expand-icon">▶</span>' : '<span class="expand-icon" style="opacity:0">▶</span>'}
                     <div class="category-color" style="background-color: ${color}"></div>
-                    ${cat}
+                    <span>${cat}</span>
+                    <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}')">🔍</button>
                 </div>
             </td>
             <td class="text-right">${formatMoney(amount)}</td>
@@ -765,16 +834,61 @@ function renderIncomeTable(incomeByCategory, totalInc) {
                 </div>
             </td>
         `;
+        
+        const subcatRows = [];
+        subCatsKeys.forEach(sub => {
+            const subAmt = catData.subcats[sub];
+            const subPct = amount > 0 ? ((subAmt / amount) * 100).toFixed(1) : 0;
+            const subTr = document.createElement('tr');
+            subTr.className = 'subcat-row collapsed';
+            subTr.innerHTML = `
+                <td style="padding-left: 48px;">
+                    <div class="category-name" style="font-size: 0.9em; opacity: 0.8;">
+                        <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}', '${sub}')">🔍</button>
+                        ↳ ${sub}
+                    </div>
+                </td>
+                <td class="text-right" style="font-size: 0.9em; opacity: 0.8;">${formatMoney(subAmt)}</td>
+                <td style="font-size: 0.9em; opacity: 0.8;">${subPct}% da cat.</td>
+            `;
+            subcatRows.push(subTr);
+        });
+        
+        tr.onclick = () => {
+            const icon = tr.querySelector('.expand-icon');
+            if (icon) {
+                const isExpanded = icon.classList.contains('expanded');
+                if (isExpanded) {
+                    icon.classList.remove('expanded');
+                    icon.innerText = '▶';
+                    subcatRows.forEach(sr => sr.classList.add('collapsed'));
+                } else {
+                    icon.classList.add('expanded');
+                    icon.innerText = '▼';
+                    subcatRows.forEach(sr => sr.classList.remove('collapsed'));
+                }
+            }
+        };
+        
         els.incomeTableBody.appendChild(tr);
+        subcatRows.forEach(sr => els.incomeTableBody.appendChild(sr));
     });
 }
 
 // Modal Logic
-function openCategoryDetails(category) {
-    els.modalCategoryTitle.innerText = `Detalhes: ${category}`;
+function openCategoryDetails(category, subcategory = null) {
+    els.modalCategoryTitle.innerText = subcategory ? `Detalhes: ${category} - ${subcategory}` : `Detalhes: ${category}`;
     els.detailsTableBody.innerHTML = '';
     
-    const filtered = state.data.filter(item => item.cat === category);
+    const filtered = state.data.filter(item => {
+        if (item.cat !== category) return false;
+        if (subcategory) {
+            let itemSub = item.subcatOrig || 'Não classificado';
+            if (itemSub === '-' || !itemSub) itemSub = 'Não classificado';
+            return itemSub === subcategory;
+        }
+        return true;
+    });
     
     if (filtered.length === 0) {
         els.detailsTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center">Nenhuma transação encontrada.</td></tr>';
@@ -804,32 +918,94 @@ function closeCategoryDetails() {
     els.detailsModal.classList.remove('active');
 }
 
-function renderAnnualMatrix(expByCategoryMonth) {
+function renderAnnualMatrix(matrixData) {
     els.matrixTableBody.innerHTML = '';
     
-    const cats = Object.keys(expByCategoryMonth).sort();
+    const periods = state.view === 'historico' ? ['2022', '2023', '2024', '2025', '2026'] : 
+                    ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+    const periodLabels = state.view === 'historico' ? periods : 
+                         ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    
+    // Header
+    if (els.matrixTableHead) {
+        let theadHtml = `<tr><th style="text-align: left; padding: 12px; border-bottom: 1px solid var(--glass-border);">Categoria</th>`;
+        periodLabels.forEach(p => {
+            theadHtml += `<th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">${p}</th>`;
+        });
+        theadHtml += `<th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Total</th></tr>`;
+        els.matrixTableHead.innerHTML = theadHtml;
+    }
+    
+    const cats = Object.keys(matrixData).sort();
     if (cats.length === 0) {
-        els.matrixTableBody.innerHTML = '<tr><td colspan="14" style="text-align:center">Sem dados no ano.</td></tr>';
+        els.matrixTableBody.innerHTML = `<tr><td colspan="${periods.length + 2}" style="text-align:center">Sem dados.</td></tr>`;
         return;
     }
     
     cats.forEach(cat => {
-        const months = expByCategoryMonth[cat];
-        let rowHtml = `<td>${cat}</td>`;
-        let catTotal = 0;
-        
-        for (let i = 1; i <= 12; i++) {
-            let mStr = i.toString().padStart(2, '0');
-            let val = months[mStr] || 0;
-            catTotal += val;
-            rowHtml += `<td class="text-right">${val > 0 ? formatMoney(val) : '-'}</td>`;
-        }
-        
-        rowHtml += `<td class="text-right" style="font-weight:bold;">${formatMoney(catTotal)}</td>`;
+        const catData = matrixData[cat];
+        const subCatsKeys = Object.keys(catData.subcats).sort();
+        const hasSubcats = subCatsKeys.length > 0;
         
         const tr = document.createElement('tr');
+        tr.className = 'clickable-row cat-row';
+        
+        let rowHtml = `<td>
+            <div class="category-name">
+                ${hasSubcats ? '<span class="expand-icon">▶</span>' : '<span class="expand-icon" style="opacity:0">▶</span>'}
+                <span>${cat}</span>
+                <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}')">🔍</button>
+            </div>
+        </td>`;
+        
+        periods.forEach(p => {
+            let val = catData.periods[p] || 0;
+            rowHtml += `<td class="text-right">${val > 0 ? formatMoney(val) : '-'}</td>`;
+        });
+        
+        rowHtml += `<td class="text-right" style="font-weight:bold;">${formatMoney(catData.total)}</td>`;
         tr.innerHTML = rowHtml;
+        
+        const subcatRows = [];
+        subCatsKeys.forEach(sub => {
+            const subData = catData.subcats[sub];
+            const subTr = document.createElement('tr');
+            subTr.className = 'subcat-row collapsed';
+            
+            let subHtml = `<td style="padding-left: 36px;">
+                <div class="category-name" style="font-size: 0.9em; opacity: 0.8;">
+                    <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}', '${sub}')">🔍</button>
+                    ↳ ${sub}
+                </div>
+            </td>`;
+            
+            periods.forEach(p => {
+                let val = subData.periods[p] || 0;
+                subHtml += `<td class="text-right" style="font-size: 0.9em; opacity: 0.8;">${val > 0 ? formatMoney(val) : '-'}</td>`;
+            });
+            subHtml += `<td class="text-right" style="font-size: 0.9em; opacity: 0.8;">${formatMoney(subData.total)}</td>`;
+            subTr.innerHTML = subHtml;
+            subcatRows.push(subTr);
+        });
+        
+        tr.onclick = () => {
+            const icon = tr.querySelector('.expand-icon');
+            if (icon) {
+                const isExpanded = icon.classList.contains('expanded');
+                if (isExpanded) {
+                    icon.classList.remove('expanded');
+                    icon.innerText = '▶';
+                    subcatRows.forEach(sr => sr.classList.add('collapsed'));
+                } else {
+                    icon.classList.add('expanded');
+                    icon.innerText = '▼';
+                    subcatRows.forEach(sr => sr.classList.remove('collapsed'));
+                }
+            }
+        };
+        
         els.matrixTableBody.appendChild(tr);
+        subcatRows.forEach(sr => els.matrixTableBody.appendChild(sr));
     });
 }
 
