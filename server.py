@@ -153,7 +153,7 @@ def upload_file():
         "dateStr": Data no formato DD/MM/YYYY.
         "desc": Descrição original limpa.
         "total": O valor numérico (float positivo).
-        "origem": Estritamente "Conta Conjunta" ou "Cartão" (se for de fatura/cartão de crédito use Cartão, se for de extrato de conta corrente use Conta Conjunta).
+        "origem": Estritamente "Conta Conjunta" ou "Cartao" (se for de fatura/cartão de crédito use Cartao, se for de extrato de conta corrente use Conta Conjunta).
         "cat": Categoria EXATA da lista permitida.
         "subcat": Subcategoria EXATA da lista permitida (ou vazio "").
         "dc": D (Débito) ou C (Crédito), rigorosamente extraído da lista de Categorias da SKILL.
@@ -205,7 +205,7 @@ def upload_file():
                 
             # 5. Enforce allowed origin
             origem = item.get('origem', '')
-            if origem not in ['Conta Conjunta', 'Cartão']:
+            if origem not in ['Conta Conjunta', 'Cartao']:
                 # Default to Conta Conjunta if LLM hallucinates
                 item['origem'] = 'Conta Conjunta'
         

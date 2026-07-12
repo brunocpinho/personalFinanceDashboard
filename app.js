@@ -84,17 +84,17 @@ const els = {
 
 // Colors for Categories
 const categoryColors = {
-    'Alimentação': '#f59e0b',
+    'Alimentacao': '#f59e0b',
     'Custos fixos': '#3b82f6',
-    'Cartão de Crédito': '#ef4444',
+    'Cartao de Credito': '#ef4444',
     'Saúde': '#10b981',
     'Transporte': '#6366f1',
     'Carro': '#8b5cf6',
-    'Vestuário': '#ec4899',
+    'Vestuario': '#ec4899',
     'Lazer': '#14b8a6',
     'Pets': '#f97316',
     'Educação': '#84cc16',
-    'Aplicações': '#06b6d4',
+    'Aplicacoes': '#06b6d4',
     'Outros': '#9ca3af'
 };
 
@@ -473,7 +473,7 @@ function processAndRender() {
     
     // Process Data
     activeData.forEach(item => {
-        if (item.cat === 'Saldo Inicial (Mês)') return;
+        if (item.cat === 'Saldo Inicial (Mes)') return;
 
         let isIncome = (item.dc === 'C');
         
@@ -558,7 +558,7 @@ function processAndRender() {
     let totalIncomeCategories = 0;
     
     activeData.forEach(item => {
-        if (item.cat === 'Saldo Inicial (Mês)') return;
+        if (item.cat === 'Saldo Inicial (Mes)') return;
         let isIncome = (item.dc === 'C');
         if (!isIncome) {
             const orgVal = item.origem ? item.origem.toUpperCase() : '';
@@ -845,39 +845,39 @@ let classificationResults = [];
 
 // Allowed categories from SKILL.md
 const allowedCategories = [
-    'Academia', 'Alimentação', 'Aplicações', 'Assinaturas', 'Bebidas', 'Carro',
-    'Cartão de Crédito', 'Combustível', 'Custos fixos', 'Doações', 'Domésticos',
-    'Educação', 'Eletrônicos', 'Estética', 'Farmácia', 'Imóveis', 'Impostos',
-    'Investimentos', 'Lazer', 'Mateus', 'Outros', 'Pagamento Cartão', 'Pessoais',
+    'Academia', 'Alimentacao', 'Aplicacoes', 'Assinaturas', 'Bebidas', 'Carro',
+    'Cartao de Credito', 'Combustivel', 'Custos fixos', 'Doacoes', 'Domesticos',
+    'Educação', 'Eletronicos', 'Estetica', 'Farmacia', 'Imoveis', 'Impostos',
+    'Investimentos', 'Lazer', 'Mateus', 'Outros', 'Pagamento Cartao', 'Pessoais',
     'Pets', 'Presentes', 'Recebimentos', 'Reembolsos', 'Rendimentos', 'Resgates',
-    'Restaurante', 'Salário', 'Saldo Inicial (Mês)', 'Salinense', 'Saques',
-    'Saúde', 'Serviços', 'Taxas', 'Transferências', 'Transporte', 'Vestuário', 'Viagens'
+    'Restaurante', 'Salario', 'Saldo Inicial (Mes)', 'Salinense', 'Saques',
+    'Saúde', 'Serviços', 'Taxas', 'Transferencias', 'Transporte', 'Vestuario', 'Viagens'
 ];
 
 // Mapping to enforce strict D/C and I/E based on Category
 const categoryRules = {
     'Academia': { dc: 'D', ie: 'E' },
-    'Alimentação': { dc: 'D', ie: 'E' },
-    'Aplicações': { dc: 'D', ie: 'I' },
+    'Alimentacao': { dc: 'D', ie: 'E' },
+    'Aplicacoes': { dc: 'D', ie: 'I' },
     'Assinaturas': { dc: 'D', ie: 'E' },
     'Bebidas': { dc: 'D', ie: 'E' },
     'Carro': { dc: 'D', ie: 'E' },
-    'Cartão de Crédito': { dc: 'C', ie: 'I' },
-    'Combustível': { dc: 'D', ie: 'E' },
+    'Cartao de Credito': { dc: 'C', ie: 'I' },
+    'Combustivel': { dc: 'D', ie: 'E' },
     'Custos fixos': { dc: 'D', ie: 'E' },
-    'Doações': { dc: 'D', ie: 'E' },
-    'Domésticos': { dc: 'D', ie: 'E' },
+    'Doacoes': { dc: 'D', ie: 'E' },
+    'Domesticos': { dc: 'D', ie: 'E' },
     'Educação': { dc: 'D', ie: 'E' },
-    'Eletrônicos': { dc: 'D', ie: 'E' },
-    'Estética': { dc: 'D', ie: 'E' },
-    'Farmácia': { dc: 'D', ie: 'E' },
-    'Imóveis': { dc: 'D', ie: 'E' },
+    'Eletronicos': { dc: 'D', ie: 'E' },
+    'Estetica': { dc: 'D', ie: 'E' },
+    'Farmacia': { dc: 'D', ie: 'E' },
+    'Imoveis': { dc: 'D', ie: 'E' },
     'Impostos': { dc: 'D', ie: 'E' },
     'Investimentos': { dc: 'D', ie: 'I' },
     'Lazer': { dc: 'D', ie: 'E' },
     'Mateus': { dc: 'D', ie: 'E' },
     'Outros': { dc: 'D', ie: 'E' },
-    'Pagamento Cartão': { dc: 'D', ie: 'I' },
+    'Pagamento Cartao': { dc: 'D', ie: 'I' },
     'Pessoais': { dc: 'D', ie: 'E' },
     'Pets': { dc: 'D', ie: 'E' },
     'Presentes': { dc: 'D', ie: 'E' },
@@ -886,27 +886,27 @@ const categoryRules = {
     'Rendimentos': { dc: 'C', ie: 'E' },
     'Resgates': { dc: 'C', ie: 'I' },
     'Restaurante': { dc: 'D', ie: 'E' },
-    'Salário': { dc: 'C', ie: 'E' },
-    'Saldo Inicial (Mês)': { dc: 'C', ie: 'I' },
+    'Salario': { dc: 'C', ie: 'E' },
+    'Saldo Inicial (Mes)': { dc: 'C', ie: 'I' },
     'Salinense': { dc: 'D', ie: 'E' },
     'Saques': { dc: 'D', ie: 'E' },
     'Saúde': { dc: 'D', ie: 'E' },
     'Serviços': { dc: 'D', ie: 'E' },
     'Taxas': { dc: 'D', ie: 'E' },
-    'Transferências': { dc: 'D', ie: 'E' },
+    'Transferencias': { dc: 'D', ie: 'E' },
     'Transporte': { dc: 'D', ie: 'E' },
-    'Vestuário': { dc: 'D', ie: 'E' },
+    'Vestuario': { dc: 'D', ie: 'E' },
     'Viagens': { dc: 'D', ie: 'E' }
 };
 
 const allowedSubcategories = [
     'Supermercado',
-    'Farmácia',
+    'Farmacia',
     'Restaurante',
-    'Combustível',
+    'Combustivel',
     'Serviços',
     'Pets',
-    'Vestuário',
+    'Vestuario',
     'Impostos',
     'Investimentos',
     'Saúde'
@@ -1040,7 +1040,7 @@ function renderReviewTable() {
         let subcatOptions = `<option value="">-</option>` + allowedSubcategories.map(c => `<option value="${c}" ${item.subcat === c ? 'selected' : ''}>${c}</option>`).join('');
         
         // Origin Select
-        const allowedOrigins = ['Conta Conjunta', 'Cartão'];
+        const allowedOrigins = ['Conta Conjunta', 'Cartao'];
         let originOptions = allowedOrigins.map(o => `<option value="${o}" ${item.origem === o ? 'selected' : ''}>${o}</option>`).join('');
         
         tr.innerHTML = `
