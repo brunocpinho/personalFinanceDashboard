@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financeiro K&B</title>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Toggle & Overlay -->
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+        <button id="menu-toggle" class="menu-toggle glass-effect">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+        </button>
+
+        <!-- Sidebar -->
+        <nav class="sidebar glass-effect">
+            <div class="logo">
+                <div class="logo-icon"></div>
+                <h2>Financeiro K&B</h2>
+            </div>
+            
+            <ul class="nav-links">
+                <li><a href="#" class="view-btn" data-view="anual" id="nav-anual">Visão Anual</a></li>
+                <li><a href="#" class="view-btn active" data-view="mensal" id="nav-mensal">Visão Mensal</a></li>
+                <li><a href="#" class="view-btn" data-view="historico" id="nav-historico">Visão Desde o Início</a></li>
+                <li><a href="#" class="view-btn local-only" data-view="upload" id="nav-upload" style="display: none;">Gerenciar Transações</a></li>
+            </ul>
+            
+            <div class="theme-toggle">
+                <button id="theme-btn">Alternar Tema</button>
+                <button id="refresh-btn" style="margin-top: 12px; background: rgba(99, 102, 241, 0.2); color: var(--primary);">Atualizar Dados</button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <div class="header-title">
+                    <h1 id="view-title">Visão Anual - 2025</h1>
+                    <p class="subtitle">Acompanhamento e gestão de gastos e receitas</p>
+                </div>
+                
+                <div class="controls glass-effect">
+                    <div class="control-group" id="year-control-group">
+                        <label for="year-select">Ano</label>
+                        <select id="year-select">
+                            <option value="2022">2022</option>
+                            <option value="2023">2023</option>
+                            <option value="2024">2024</option>
+                            <option value="2025" selected>2025</option>
+                            <option value="2026">2026</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group" id="month-control-group">
+                        <label for="month-select">Mês</label>
+                        <select id="month-select">
+                            <option value="01">Janeiro</option>
+                            <option value="02">Fevereiro</option>
+                            <option value="03">Março</option>
+                            <option value="04">Abril</option>
+                            <option value="05">Maio</option>
+                            <option value="06">Junho</option>
+                            <option value="07">Julho</option>
+                            <option value="08">Agosto</option>
+                            <option value="09">Setembro</option>
+                            <option value="10">Outubro</option>
+                            <option value="11">Novembro</option>
+                            <option value="12">Dezembro</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="filter-ie">Fluxo</label>
+                        <select id="filter-ie">
+                            <option value="all">Todos (I+E)</option>
+                            <option value="E" selected>Apenas Externos (E)</option>
+                        </select>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Loading Indicator -->
+            <div id="loading" class="loading-container">
+                <div class="spinner"></div>
+                <p>Carregando dados...</p>
+            </div>
+
+            <div id="dashboard-content" class="dashboard-grid fade-in">
+                <!-- Summary Cards -->
+                <div class="summary-cards">
+                    <div class="card glass-effect income-card">
+                        <div class="card-icon">↑</div>
+                        <div class="card-info">
+                            <h3>Créditos (Entradas)</h3>
+                            <h2 id="total-receitas">R$ 0,00</h2>
+                        </div>
+                    </div>
+                    <div class="card glass-effect expense-card">
+                        <div class="card-icon">↓</div>
+                        <div class="card-info">
+                            <h3>Débitos (Saídas)</h3>
+                            <h2 id="total-despesas">R$ 0,00</h2>
+                        </div>
+                    </div>
+                    <div class="card glass-effect balance-card">
+                        <div class="card-icon">⟷</div>
+                        <div class="card-info">
+                            <h3>Saldo Líquido</h3>
+                            <h2 id="saldo-liquido">R$ 0,00</h2>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Charts Area -->
+                <div class="charts-area">
+                    <div class="chart-container glass-effect main-chart">
+                        <h3>Evolução Créditos vs Débitos</h3>
+                        <div class="canvas-wrapper">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container glass-effect side-chart">
+                        <h3>Débitos por Categoria</h3>
+                        <div class="canvas-wrapper">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses Table Area -->
+                <div class="table-area glass-effect" style="margin-bottom: 24px; padding: 24px;">
+                    <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="margin: 0;">Despesas por Categoria</h3>
+                        <div>
+                            <label for="origin-filter" style="font-size: 0.9rem; margin-right: 8px;">Origem:</label>
+                            <select id="origin-filter" style="padding: 6px 12px; border-radius: 6px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.3); color: inherit; outline: none; font-family: inherit;">
+                                <option value="all">Todas as Origens</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="category-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left; padding: 12px; border-bottom: 1px solid var(--glass-border);">Categoria</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Total (R$)</th>
+                                    <th style="text-align: left; padding: 12px; border-bottom: 1px solid var(--glass-border);">% do Gasto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-body">
+                                <!-- JS Populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Income Table Area -->
+                <div class="table-area glass-effect" style="margin-bottom: 24px; padding: 24px;">
+                    <div class="table-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="margin: 0;">Receitas por Categoria</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="income-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left; padding: 12px; border-bottom: 1px solid var(--glass-border);">Categoria</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Total (R$)</th>
+                                    <th style="text-align: left; padding: 12px; border-bottom: 1px solid var(--glass-border);">% da Receita</th>
+                                </tr>
+                            </thead>
+                            <tbody id="income-table-body">
+                                <!-- JS Populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Annual Matrix Area -->
+                <div class="table-area glass-effect" id="annual-matrix-section" style="display: none; margin-bottom: 24px; padding: 24px;">
+                    <div class="table-header">
+                        <h3>Acompanhamento Anual por Categoria</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left; padding: 12px; border-bottom: 1px solid var(--glass-border);">Categoria</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Jan</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Fev</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Mar</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Abr</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Mai</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Jun</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Jul</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Ago</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Set</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Out</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Nov</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Dez</th>
+                                    <th class="text-right" style="padding: 12px; border-bottom: 1px solid var(--glass-border);">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="matrix-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Transactions List (Collapsible) -->
+                <div class="transactions-section glass-effect" id="monthly-transactions" style="display: none; margin-top: 1.5rem; padding: 1.5rem; border-radius: 12px; margin-bottom: 24px;">
+                    <details>
+                        <summary style="cursor: pointer; font-weight: 600; font-size: 1.1rem; outline: none;">Ver Todas as Transações do Mês</summary>
+                        <div class="table-container" style="margin-top: 1rem; max-height: 400px; overflow-y: auto;">
+                            <table class="data-table" style="font-size: 0.85rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Descrição</th>
+                                        <th class="text-right">Valor (R$)</th>
+                                        <th>Origem</th>
+                                        <th>Categoria</th>
+                                        <th>SubCategoria</th>
+                                        <th style="text-align: center;">D/C</th>
+                                        <th style="text-align: center;">I/E</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="all-transactions-body">
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Upload/Manage Transactions Area (Hidden by default) -->
+            <div class="upload-section glass-effect fade-in" id="upload-view" style="display: none; padding: 24px; margin-bottom: 24px;">
+                <div class="table-header">
+                    <h3>Gerenciar Transações (Classificação com IA)</h3>
+                    <p class="subtitle" style="margin-top: 8px;">Faça upload de extratos para classificação automática via IA. Os dados serão salvos no mês/ano selecionado no topo.</p>
+                </div>
+                
+                <div style="margin-bottom: 24px; margin-top: 16px;">
+                    <div id="drop-zone" class="drop-zone">
+                        <p>Arraste e solte o arquivo aqui (.csv, .xlsx, .xls, .ofx, .pdf)</p>
+                        <p style="font-size: 12px; margin-top: 8px;">ou</p>
+                        <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.ofx,.pdf" style="display: none;">
+                        <button id="browse-btn" class="action-btn" style="margin-top: 12px;">Procurar Arquivo</button>
+                    </div>
+                    <p id="selected-file-name" style="margin-top: 8px; font-size: 14px; color: var(--success); font-weight: 500;"></p>
+                </div>
+                
+                <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+                    <button id="classify-btn" class="action-btn primary-btn" disabled>Classificar Arquivo</button>
+                    <button id="clear-upload-btn" class="action-btn">Limpar</button>
+                </div>
+                
+                <div id="upload-loading" class="loading-container" style="display: none; margin-bottom: 24px; padding: 20px 0;">
+                    <div class="spinner"></div>
+                    <p id="upload-status-text">A IA está processando e classificando as transações...</p>
+                </div>
+                
+                <div id="review-area" style="display: none;">
+                    <h4 style="margin-bottom: 16px; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px;">Revisão de Classificação</h4>
+                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="data-table" id="review-table" style="font-size: 0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">Data</th>
+                                    <th>Descrição</th>
+                                    <th class="text-right">Valor</th>
+                                    <th>Origem</th>
+                                    <th>Categoria</th>
+                                    <th>SubCategoria</th>
+                                    <th style="text-align: center; width: 40px;">D/C</th>
+                                    <th style="text-align: center; width: 40px;">I/E</th>
+                                    <th style="text-align: center; width: 40px;">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="review-table-body">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top: 24px; display: flex; justify-content: flex-end;">
+                        <button id="save-review-btn" class="action-btn primary-btn">Confirmar e Salvar no Repositório</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modal para Drill-down -->
+    <div id="details-modal" class="modal-overlay">
+        <div class="modal-content glass-effect">
+            <div class="modal-header">
+                <h3 id="modal-category-title">Detalhes da Categoria</h3>
+                <button id="close-modal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body table-responsive">
+                <table id="details-table" style="font-size: 0.85rem;">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th class="text-right">Valor (R$)</th>
+                            <th>Origem</th>
+                            <th>SubCategoria</th>
+                            <th style="text-align: center;">D/C</th>
+                            <th style="text-align: center;">I/E</th>
+                        </tr>
+                    </thead>
+                    <tbody id="details-table-body">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Login -->
+    <div id="login-modal" class="modal-overlay active" style="z-index: 9999; backdrop-filter: blur(10px);">
+        <div class="modal-content glass-effect" style="max-width: 400px; text-align: center; padding: 2rem;">
+            <h2>Acesso Restrito</h2>
+            <p style="margin: 1rem 0; color: var(--text-color); opacity: 0.8;">Insira sua senha para descriptografar os dados locais.</p>
+            <input type="password" id="login-password" placeholder="Senha" style="width: 100%; padding: 12px; margin-bottom: 1rem; border-radius: 6px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: inherit; font-size: 1rem;">
+            <p id="login-error" style="color: var(--danger); font-size: 0.9rem; margin-bottom: 1rem; display: none;">Senha incorreta ou dados corrompidos.</p>
+            <button id="login-btn" style="width: 100%; padding: 12px; border-radius: 6px; border: none; background: var(--primary); color: white; font-weight: bold; font-size: 1rem; cursor: pointer;">Acessar Dashboard</button>
+        </div>
+    </div>
+
+    <!-- Custom JS -->
+    <script src="app.js?v=10"></script>
+</body>
+</html>
