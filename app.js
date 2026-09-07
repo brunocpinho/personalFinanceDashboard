@@ -493,18 +493,19 @@ function processAndRender() {
         if (!subcat || subcat === '-') subcat = 'Não classificado';
         
         let periodStr = state.view === 'historico' ? item.yearStr : item.monthStr;
-        
+        let isSelected = !state.unselectedCats.has(item.cat);
+
         if (isIncome) {
-            totalIn += item.total;
+            if (isSelected) totalIn += item.total;
             
             // Income categories
             if (!incomeByCategory[item.cat]) incomeByCategory[item.cat] = { total: 0, subcats: {} };
             incomeByCategory[item.cat].total += item.total;
             incomeByCategory[item.cat].subcats[subcat] = (incomeByCategory[item.cat].subcats[subcat] || 0) + item.total;
-            totalIncomeCategories += item.total;
+            if (isSelected) totalIncomeCategories += item.total;
             
         } else {
-            totalOut += item.total;
+            if (isSelected) totalOut += item.total;
             if (item.origem) origins.add(item.origem.toUpperCase());
             
             // Expenses categories
@@ -513,7 +514,7 @@ function processAndRender() {
                 if (!filteredExpByCategory[item.cat]) filteredExpByCategory[item.cat] = { total: 0, subcats: {} };
                 filteredExpByCategory[item.cat].total += item.total;
                 filteredExpByCategory[item.cat].subcats[subcat] = (filteredExpByCategory[item.cat].subcats[subcat] || 0) + item.total;
-                filteredTotalOut += item.total;
+                if (isSelected) filteredTotalOut += item.total;
             }
             
             // Matrix data (both anual and historico)
@@ -529,24 +530,26 @@ function processAndRender() {
         }
         
         // Trends
-        if (state.view === 'anual') {
-            if (trendsByPeriod[item.monthStr]) {
-                if (isIncome) trendsByPeriod[item.monthStr].inc += item.total;
-                if (!isIncome) trendsByPeriod[item.monthStr].exp += item.total;
-            }
-        } else if (state.view === 'historico') {
-            if (trendsByPeriod[item.yearStr]) {
-                if (isIncome) trendsByPeriod[item.yearStr].inc += item.total;
-                if (!isIncome) trendsByPeriod[item.yearStr].exp += item.total;
-            }
-        } else {
-            // Group by Day (DD)
-            const parts = item.dateStr.split('/');
-            if (parts.length === 3) {
-                const day = parts[0];
-                if (!trendsByPeriod[day]) trendsByPeriod[day] = { inc: 0, exp: 0 };
-                if (isIncome) trendsByPeriod[day].inc += item.total;
-                if (!isIncome) trendsByPeriod[day].exp += item.total;
+        if (isSelected) {
+            if (state.view === 'anual') {
+                if (trendsByPeriod[item.monthStr]) {
+                    if (isIncome) trendsByPeriod[item.monthStr].inc += item.total;
+                    if (!isIncome) trendsByPeriod[item.monthStr].exp += item.total;
+                }
+            } else if (state.view === 'historico') {
+                if (trendsByPeriod[item.yearStr]) {
+                    if (isIncome) trendsByPeriod[item.yearStr].inc += item.total;
+                    if (!isIncome) trendsByPeriod[item.yearStr].exp += item.total;
+                }
+            } else {
+                // Group by Day (DD)
+                const parts = item.dateStr.split('/');
+                if (parts.length === 3) {
+                    const day = parts[0];
+                    if (!trendsByPeriod[day]) trendsByPeriod[day] = { inc: 0, exp: 0 };
+                    if (isIncome) trendsByPeriod[day].inc += item.total;
+                    if (!isIncome) trendsByPeriod[day].exp += item.total;
+                }
             }
         }
     });
@@ -564,7 +567,8 @@ function processAndRender() {
         sortedData.forEach(item => {
             const tr = document.createElement('tr');
             let dcStyle = item.dc === 'D' ? 'color: var(--danger)' : (item.dc === 'C' ? 'color: var(--success)' : '');
-            tr.innerHTML = `<td>${item.dateStr}</td><td>${item.desc}</td><td class="text-right" style="${dcStyle}">${formatMoney(item.total)}</td><td>${item.origem || '-'}</td><td>${item.cat}</td><td>${item.subcatOrig}</td><td style="text-align: center; font-weight: bold; ${dcStyle}">${item.dc}</td><td style="text-align: center;">${item.ie}</td>`;
+            let opacity = state.unselectedCats.has(item.cat) ? 'opacity: 0.4;' : '';
+            tr.innerHTML = `<td style="${opacity}">${item.dateStr}</td><td style="${opacity}">${item.desc}</td><td class="text-right" style="${dcStyle} ${opacity}">${formatMoney(item.total)}</td><td style="${opacity}">${item.origem || '-'}</td><td style="${opacity}">${item.cat}</td><td style="${opacity}">${item.subcatOrig}</td><td style="text-align: center; font-weight: bold; ${dcStyle} ${opacity}">${item.dc}</td><td style="text-align: center; ${opacity}">${item.ie}</td>`;
             els.allTransactionsBody.appendChild(tr);
         });
     }
@@ -605,8 +609,28 @@ function processAndRender() {
     
     // Prepare expByCategory for charts (needs flat format)
     let flatExpByCat = {};
-    Object.keys(filteredExpByCategory).forEach(c => flatExpByCat[c] = filteredExpByCategory[c].total);
-    renderCharts(trendsByPeriod, sortedCats, flatExpByCat, filteredTotalOut);
+    Object.keys(filteredExpByCategory).forEach(c => {
+        if (!state.unselectedCats.has(c)) {
+            flatExpByCat[c] = filteredExpByCategory[c].total;
+        }
+    });
+    
+    // Pass only the selected ones to the chart logic if needed, but since flatExpByCat filters them, it's fine.
+    // Notice that sortedCats will contain ALL categories (so renderTable displays all), but flatExpByCat only contains selected.
+    
+    // We should filter sortedCats for the charts.
+    const chartSortedCats = sortedCats.filter(c => !state.unselectedCats.has(c));
+    
+    renderCharts(trendsByPeriod, chartSortedCats, flatExpByCat, filteredTotalOut);
+}
+
+function toggleCategory(cat) {
+    if (state.unselectedCats.has(cat)) {
+        state.unselectedCats.delete(cat);
+    } else {
+        state.unselectedCats.add(cat);
+    }
+    processAndRender();
 }
 
 function renderCharts(trends, sortedCats, expByCategory, totalExp) {
@@ -732,18 +756,20 @@ function renderTable(expByCategory, totalExp) {
         const tr = document.createElement('tr');
         tr.className = 'clickable-row cat-row';
         const hasSubcats = subCatsKeys.length > 0;
+        const isSelected = !state.unselectedCats.has(cat);
+        const opacityStyle = isSelected ? '' : 'opacity: 0.5; text-decoration: line-through;';
         
         tr.innerHTML = `
             <td>
-                <div class="category-name">
-                    ${hasSubcats ? '<span class="expand-icon">▶</span>' : '<span class="expand-icon" style="opacity:0">▶</span>'}
+                <div class="category-name" style="${opacityStyle}">
+                    <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleCategory('${cat}')" style="margin-right: 8px; cursor: pointer;">
+                    ${hasSubcats ? '<span class="expand-icon">[+]</span>' : '<span class="expand-icon" style="opacity:0">[+]</span>'}
                     <div class="category-color" style="background-color: ${color}"></div>
-                    <span>${cat}</span>
-                    <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}')">🔍</button>
+                    <span style="cursor: pointer; text-decoration: underline;" onclick="event.stopPropagation(); openCategoryDetails('${cat}')">${cat}</span>
                 </div>
             </td>
-            <td class="text-right">${formatMoney(amount)}</td>
-            <td>
+            <td class="text-right" style="${opacityStyle}">${formatMoney(amount)}</td>
+            <td style="${opacityStyle}">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <div style="flex:1; height:6px; background:rgba(0,0,0,0.1); border-radius:3px; overflow:hidden;">
                         <div style="height:100%; width:${pct}%; background:${color}"></div>
@@ -760,14 +786,13 @@ function renderTable(expByCategory, totalExp) {
             const subTr = document.createElement('tr');
             subTr.className = 'subcat-row collapsed';
             subTr.innerHTML = `
-                <td style="padding-left: 48px;">
-                    <div class="category-name" style="font-size: 0.9em; opacity: 0.8;">
-                        <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}', '${sub}')">🔍</button>
-                        ↳ ${sub}
+                <td style="padding-left: 48px; ${opacityStyle}">
+                    <div class="category-name" style="font-size: 0.9em;">
+                        ↳ <span style="cursor: pointer; text-decoration: underline;" onclick="event.stopPropagation(); openCategoryDetails('${cat}', '${sub}')">${sub}</span>
                     </div>
                 </td>
-                <td class="text-right" style="font-size: 0.9em; opacity: 0.8;">${formatMoney(subAmt)}</td>
-                <td style="font-size: 0.9em; opacity: 0.8;">${subPct}% da cat.</td>
+                <td class="text-right" style="font-size: 0.9em; ${opacityStyle}">${formatMoney(subAmt)}</td>
+                <td style="font-size: 0.9em; ${opacityStyle}">${subPct}% da cat.</td>
             `;
             subcatRows.push(subTr);
         });
@@ -778,11 +803,11 @@ function renderTable(expByCategory, totalExp) {
                 const isExpanded = icon.classList.contains('expanded');
                 if (isExpanded) {
                     icon.classList.remove('expanded');
-                    icon.innerText = '▶';
+                    icon.innerText = '[+]';
                     subcatRows.forEach(sr => sr.classList.add('collapsed'));
                 } else {
                     icon.classList.add('expanded');
-                    icon.innerText = '▼';
+                    icon.innerText = '[-]';
                     subcatRows.forEach(sr => sr.classList.remove('collapsed'));
                 }
             }
@@ -814,18 +839,20 @@ function renderIncomeTable(incomeByCategory, totalInc) {
         const tr = document.createElement('tr');
         tr.className = 'clickable-row cat-row';
         const hasSubcats = subCatsKeys.length > 0;
+        const isSelected = !state.unselectedCats.has(cat);
+        const opacityStyle = isSelected ? '' : 'opacity: 0.5; text-decoration: line-through;';
         
         tr.innerHTML = `
             <td>
-                <div class="category-name">
-                    ${hasSubcats ? '<span class="expand-icon">▶</span>' : '<span class="expand-icon" style="opacity:0">▶</span>'}
+                <div class="category-name" style="${opacityStyle}">
+                    <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleCategory('${cat}')" style="margin-right: 8px; cursor: pointer;">
+                    ${hasSubcats ? '<span class="expand-icon">[+]</span>' : '<span class="expand-icon" style="opacity:0">[+]</span>'}
                     <div class="category-color" style="background-color: ${color}"></div>
-                    <span>${cat}</span>
-                    <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}')">🔍</button>
+                    <span style="cursor: pointer; text-decoration: underline;" onclick="event.stopPropagation(); openCategoryDetails('${cat}')">${cat}</span>
                 </div>
             </td>
-            <td class="text-right">${formatMoney(amount)}</td>
-            <td>
+            <td class="text-right" style="${opacityStyle}">${formatMoney(amount)}</td>
+            <td style="${opacityStyle}">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <div style="flex:1; height:6px; background:rgba(0,0,0,0.1); border-radius:3px; overflow:hidden;">
                         <div style="height:100%; width:${pct}%; background:${color}"></div>
@@ -842,14 +869,13 @@ function renderIncomeTable(incomeByCategory, totalInc) {
             const subTr = document.createElement('tr');
             subTr.className = 'subcat-row collapsed';
             subTr.innerHTML = `
-                <td style="padding-left: 48px;">
-                    <div class="category-name" style="font-size: 0.9em; opacity: 0.8;">
-                        <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}', '${sub}')">🔍</button>
-                        ↳ ${sub}
+                <td style="padding-left: 48px; ${opacityStyle}">
+                    <div class="category-name" style="font-size: 0.9em;">
+                        ↳ <span style="cursor: pointer; text-decoration: underline;" onclick="event.stopPropagation(); openCategoryDetails('${cat}', '${sub}')">${sub}</span>
                     </div>
                 </td>
-                <td class="text-right" style="font-size: 0.9em; opacity: 0.8;">${formatMoney(subAmt)}</td>
-                <td style="font-size: 0.9em; opacity: 0.8;">${subPct}% da cat.</td>
+                <td class="text-right" style="font-size: 0.9em; ${opacityStyle}">${formatMoney(subAmt)}</td>
+                <td style="font-size: 0.9em; ${opacityStyle}">${subPct}% da cat.</td>
             `;
             subcatRows.push(subTr);
         });
@@ -860,11 +886,11 @@ function renderIncomeTable(incomeByCategory, totalInc) {
                 const isExpanded = icon.classList.contains('expanded');
                 if (isExpanded) {
                     icon.classList.remove('expanded');
-                    icon.innerText = '▶';
+                    icon.innerText = '[+]';
                     subcatRows.forEach(sr => sr.classList.add('collapsed'));
                 } else {
                     icon.classList.add('expanded');
-                    icon.innerText = '▼';
+                    icon.innerText = '[-]';
                     subcatRows.forEach(sr => sr.classList.remove('collapsed'));
                 }
             }
@@ -946,24 +972,26 @@ function renderAnnualMatrix(matrixData) {
         const catData = matrixData[cat];
         const subCatsKeys = Object.keys(catData.subcats).sort();
         const hasSubcats = subCatsKeys.length > 0;
+        const isSelected = !state.unselectedCats.has(cat);
+        const opacityStyle = isSelected ? '' : 'opacity: 0.5; text-decoration: line-through;';
         
         const tr = document.createElement('tr');
         tr.className = 'clickable-row cat-row';
         
         let rowHtml = `<td>
-            <div class="category-name">
-                ${hasSubcats ? '<span class="expand-icon">▶</span>' : '<span class="expand-icon" style="opacity:0">▶</span>'}
-                <span>${cat}</span>
-                <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}')">🔍</button>
+            <div class="category-name" style="${opacityStyle}">
+                <input type="checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleCategory('${cat}')" style="margin-right: 8px; cursor: pointer;">
+                ${hasSubcats ? '<span class="expand-icon">[+]</span>' : '<span class="expand-icon" style="opacity:0">[+]</span>'}
+                <span style="cursor: pointer; text-decoration: underline;" onclick="event.stopPropagation(); openCategoryDetails('${cat}')">${cat}</span>
             </div>
         </td>`;
         
         periods.forEach(p => {
             let val = catData.periods[p] || 0;
-            rowHtml += `<td class="text-right">${val > 0 ? formatMoney(val) : '-'}</td>`;
+            rowHtml += `<td class="text-right" style="${opacityStyle}">${val > 0 ? formatMoney(val) : '-'}</td>`;
         });
         
-        rowHtml += `<td class="text-right" style="font-weight:bold;">${formatMoney(catData.total)}</td>`;
+        rowHtml += `<td class="text-right" style="font-weight:bold; ${opacityStyle}">${formatMoney(catData.total)}</td>`;
         tr.innerHTML = rowHtml;
         
         const subcatRows = [];
@@ -972,18 +1000,17 @@ function renderAnnualMatrix(matrixData) {
             const subTr = document.createElement('tr');
             subTr.className = 'subcat-row collapsed';
             
-            let subHtml = `<td style="padding-left: 36px;">
-                <div class="category-name" style="font-size: 0.9em; opacity: 0.8;">
-                    <button class="details-icon-btn" title="Ver Detalhes" onclick="event.stopPropagation(); openCategoryDetails('${cat}', '${sub}')">🔍</button>
-                    ↳ ${sub}
+            let subHtml = `<td style="padding-left: 48px; ${opacityStyle}">
+                <div class="category-name" style="font-size: 0.9em;">
+                    ↳ <span style="cursor: pointer; text-decoration: underline;" onclick="event.stopPropagation(); openCategoryDetails('${cat}', '${sub}')">${sub}</span>
                 </div>
             </td>`;
             
             periods.forEach(p => {
                 let val = subData.periods[p] || 0;
-                subHtml += `<td class="text-right" style="font-size: 0.9em; opacity: 0.8;">${val > 0 ? formatMoney(val) : '-'}</td>`;
+                subHtml += `<td class="text-right" style="font-size: 0.9em; ${opacityStyle}">${val > 0 ? formatMoney(val) : '-'}</td>`;
             });
-            subHtml += `<td class="text-right" style="font-size: 0.9em; opacity: 0.8;">${formatMoney(subData.total)}</td>`;
+            subHtml += `<td class="text-right" style="font-size: 0.9em; ${opacityStyle}">${formatMoney(subData.total)}</td>`;
             subTr.innerHTML = subHtml;
             subcatRows.push(subTr);
         });
@@ -994,11 +1021,11 @@ function renderAnnualMatrix(matrixData) {
                 const isExpanded = icon.classList.contains('expanded');
                 if (isExpanded) {
                     icon.classList.remove('expanded');
-                    icon.innerText = '▶';
+                    icon.innerText = '[+]';
                     subcatRows.forEach(sr => sr.classList.add('collapsed'));
                 } else {
                     icon.classList.add('expanded');
-                    icon.innerText = '▼';
+                    icon.innerText = '[-]';
                     subcatRows.forEach(sr => sr.classList.remove('collapsed'));
                 }
             }
