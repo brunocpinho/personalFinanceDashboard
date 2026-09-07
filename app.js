@@ -14,7 +14,8 @@ let state = {
     chartTrend: null,
     chartCategory: null,
     data: [], // Raw parsed transactions
-    password: null // Encryption password
+    password: null, // Encryption password
+    unselectedCats: new Set()
 };
 
 // DOM Elements
